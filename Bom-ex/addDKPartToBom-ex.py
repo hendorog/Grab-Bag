@@ -6,7 +6,7 @@ import urllib2
 import re
 
 # This is our path to the BOM-EX database file
-PARTSDB = "partsdb.txt"
+PARTSDB = "/Users/roger/development/eagle/bom-ex/partsdb.txt"
 
 mfgPartNo = None
 desc = None
@@ -30,13 +30,13 @@ with open(PARTSDB, 'a') as file:
 	request.add_header('User-Agent', USER_AGENT)
 	opener = urllib2.build_opener()
 	data = opener.open(request).read()
-	soup = BeautifulSoup(data)
+	soup = BeautifulSoup(data, "html.parser")
 
 	# Parse out the Manufacturer Part Number
 	for elem in soup(text=re.compile(r'Manufacturer Part Number')):
 		try:
 			parent = elem.parent.parent.td.meta.attrs
-			mfgPartNo = parent['content']
+			mfgPartNo = parent['content'].strip()
 		except:
 			pass
 
@@ -44,7 +44,9 @@ with open(PARTSDB, 'a') as file:
 	for elem in soup(text=re.compile(r'Description')):
 		try:
 			parent = elem.parent.parent.td
-			desc = parent.contents[0]
+			desc = parent.contents[0].strip()
+			desc = desc.replace(u'\xb1', "+/-")
+			desc = desc.replace(u"°", "deg")
 		except:
 			pass
 
@@ -52,7 +54,7 @@ with open(PARTSDB, 'a') as file:
 	for elem in soup(text=re.compile(r'Manufacturer')):
 		try:
 			parent = elem.parent.parent
-			mfg = parent.span.span.contents[0]
+			mfg = parent.span.span.contents[0].strip()
 		except:
 			pass
 
@@ -60,17 +62,15 @@ with open(PARTSDB, 'a') as file:
 	for elem in soup(text=re.compile(r'Package / Case')):
 		try:
 			parent = elem.parent.parent.td
-			package = parent.contents[0]
-			if u"®" in package:
-				package = package.replace(u"®" "")
+			package = parent.contents[0].strip()
+			package = package.replace(u"®", "")
 		except:
 			pass
 
 	# We got everything we needed! Add the part to the database.
 	if mfgPartNo is not None and mfg is not None and desc is not None and package is not None:
-
 		entry = "%s\t%s\tDK\t%s\t%s\t%s\n" % (mfgPartNo, mfg, partNo, desc, package)
-		print entry
+		print entry 
 		file.write(entry)
 
 	# Something went wrong, the part was not found, DigiKey changed their site layout, etc.
